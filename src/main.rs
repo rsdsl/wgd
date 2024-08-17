@@ -120,8 +120,7 @@ fn read_peers() -> Result<Vec<PeerConfigBuilder>> {
 
         let mut columns = line.split_whitespace();
 
-        // Discard human-readable peer name
-        columns.next().ok_or(Error::TooFewPeerColumns)?;
+        let name = columns.next().ok_or(Error::TooFewPeerColumns)?;
         let public_key_base64 = columns.next().ok_or(Error::TooFewPeerColumns)?;
         let preshared_key_base64 = columns.next().ok_or(Error::TooFewPeerColumns)?;
 
@@ -134,11 +133,21 @@ fn read_peers() -> Result<Vec<PeerConfigBuilder>> {
             .replace_allowed_ips()
             .set_preshared_key(preshared_key);
 
+        println!(
+            "[info] peer {} pubkey {} psk (hidden)",
+            name, public_key_base64
+        );
+
         for column in columns {
             let allowed_ip: AllowedIp = column
                 .parse()
                 .map_err(|_| Error::InvalidAllowedIp(column.to_string()))?;
             builder = builder.add_allowed_ip(allowed_ip.address, allowed_ip.cidr);
+
+            println!(
+                "[info] peer {} allowedip {}/{}",
+                name, allowed_ip.address, allowed_ip.cidr
+            );
         }
 
         peers.push(builder);
