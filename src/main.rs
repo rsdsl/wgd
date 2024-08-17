@@ -1,5 +1,6 @@
 use std::fs::{self, File};
 use std::io::{self, BufRead, BufReader};
+use std::net::{IpAddr, Ipv4Addr};
 use std::thread;
 
 use rsdsl_netlinklib::blocking::Connection;
@@ -7,6 +8,7 @@ use thiserror::Error;
 use wireguard_control::{AllowedIp, Backend, DeviceUpdate, Key, KeyPair, PeerConfigBuilder};
 
 const IFNAME: &str = "wg0";
+const INNER_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(10, 128, 50, 254));
 const PORT: u16 = 51820;
 const CONFIGFILE_PRIVATEKEY: &str = "/data/wgd.key";
 const CONFIGFILE_PEERS: &str = "/data/wgd.peers";
@@ -64,11 +66,14 @@ fn configure_link(connection: &Connection, keypair: KeyPair) -> Result<()> {
         .set_keypair(keypair)
         .apply(&IFNAME.parse().expect("valid link name"), Backend::Kernel)?;
 
-    todo!("config link addr")
+    connection.address_add(String::from(IFNAME), INNER_ADDRESS, 24)?;
+
+    Ok(())
 }
 
 fn unconfigure_link(connection: &Connection) -> Result<()> {
     connection.address_flush(String::from(IFNAME))?;
+
     DeviceUpdate::new()
         .replace_peers()
         .set_listen_port(PORT)
