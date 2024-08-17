@@ -4,3 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+rsdsl_netlinklib = { git = "https://github.com/rsdsl/netlinklib.git", default-features = false, features = ["addr", "blocking", "link"] }
+thiserror = "1.0"
+wireguard-control = "1.5.0"
