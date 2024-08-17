@@ -86,13 +86,13 @@ fn unconfigure_link(connection: &Connection) -> Result<()> {
 }
 
 fn read_or_generate_keypair() -> Result<KeyPair> {
-    Ok(match read_keypair() {
-        Ok(keypair) => keypair,
+    match read_keypair() {
+        Ok(keypair) => Ok(keypair),
         Err(e) => {
             println!("[warn] unable to read keypair: {}", e);
-            KeyPair::generate()
+            generate_and_save_keypair()
         }
-    })
+    }
 }
 
 fn read_keypair() -> Result<KeyPair> {
@@ -100,6 +100,12 @@ fn read_keypair() -> Result<KeyPair> {
     let private_key =
         Key::from_base64(&private_base64).map_err(|_| Error::InvalidKey(private_base64))?;
     Ok(KeyPair::from_private(private_key))
+}
+
+fn generate_and_save_keypair() -> Result<KeyPair> {
+    let keypair = KeyPair::generate();
+    fs::write(CONFIGFILE_PRIVATEKEY, keypair.private.to_base64())?;
+    Ok(keypair)
 }
 
 fn read_peers() -> Result<Vec<PeerConfigBuilder>> {
