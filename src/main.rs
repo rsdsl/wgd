@@ -67,6 +67,7 @@ fn configure_link(connection: &Connection, keypair: KeyPair) -> Result<()> {
         .apply(&IFNAME.parse().expect("valid link name"), Backend::Kernel)?;
 
     connection.address_add(String::from(IFNAME), INNER_ADDRESS, 24)?;
+    connection.link_set(String::from(IFNAME), true)?;
 
     Ok(())
 }
