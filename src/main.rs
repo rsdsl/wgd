@@ -93,7 +93,7 @@ fn configure_link(
     addr4: Ipv4Addr,
     addr6: Ipv6Addr,
 ) -> Result<()> {
-    unconfigure_link(connection, ifname)?;
+    unconfigure_link(connection, ifname, port)?;
     println!("[info] unconfig {}", ifname);
 
     DeviceUpdate::new()
@@ -109,12 +109,12 @@ fn configure_link(
     Ok(())
 }
 
-fn unconfigure_link(connection: &Connection, ifname: &str) -> Result<()> {
+fn unconfigure_link(connection: &Connection, ifname: &str, port: u16) -> Result<()> {
     connection.address_flush(String::from(ifname))?;
 
     DeviceUpdate::new()
         .replace_peers()
-        .set_listen_port(PORT)
+        .set_listen_port(port)
         .unset_fwmark()
         .unset_private_key()
         .unset_public_key()
