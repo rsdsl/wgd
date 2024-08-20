@@ -8,8 +8,11 @@ use thiserror::Error;
 use wireguard_control::{AllowedIp, Backend, DeviceUpdate, Key, KeyPair, PeerConfigBuilder};
 
 const IFNAME: &str = "wg0";
+const IFNAME_EXPOSED: &str = "wg1";
 const INNER_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(10, 128, 50, 254));
+const INNER_ADDRESS_EXPOSED: IpAddr = IpAddr::V4(Ipv4Addr::new(10, 128, 60, 254));
 const PORT: u16 = 51820;
+const PORT_EXPOSED: u16 = 51821;
 const CONFIGFILE_PRIVATEKEY: &str = "/data/wgd.key";
 const CONFIGFILE_PEERS: &str = "/data/wgd.peers";
 
@@ -45,35 +48,57 @@ fn main() -> Result<()> {
         println!("[info] link {} exists", IFNAME);
     }
 
+    if !connection.link_exists(String::from(IFNAME_EXPOSED))? {
+        connection.link_add_wireguard(String::from(IFNAME_EXPOSED))?;
+        println!("[info] create exposed link {}", IFNAME_EXPOSED);
+    } else {
+        println!("[info] exposed link {} exists", IFNAME_EXPOSED);
+    }
+
     let keypair = read_or_generate_keypair()?;
     println!("[info] pubkey {}", keypair.public.to_base64());
 
-    configure_link(&connection, keypair)?;
+    configure_link(&connection, keypair.clone(), IFNAME, PORT, INNER_ADDRESS)?;
     println!("[info] config {}", IFNAME);
+
+    configure_link(
+        &connection,
+        keypair,
+        IFNAME_EXPOSED,
+        PORT_EXPOSED,
+        INNER_ADDRESS_EXPOSED,
+    )?;
+    println!("[info] config {}", IFNAME_EXPOSED);
 
     loop {
         thread::park();
     }
 }
 
-fn configure_link(connection: &Connection, keypair: KeyPair) -> Result<()> {
-    unconfigure_link(connection)?;
-    println!("[info] unconfig {}", IFNAME);
+fn configure_link(
+    connection: &Connection,
+    keypair: KeyPair,
+    ifname: &str,
+    port: u16,
+    addr: IpAddr,
+) -> Result<()> {
+    unconfigure_link(connection, ifname)?;
+    println!("[info] unconfig {}", ifname);
 
     DeviceUpdate::new()
         .add_peers(&read_peers()?)
-        .set_listen_port(PORT)
+        .set_listen_port(port)
         .set_keypair(keypair)
-        .apply(&IFNAME.parse().expect("valid link name"), Backend::Kernel)?;
+        .apply(&ifname.parse().expect("valid link name"), Backend::Kernel)?;
 
-    connection.address_add(String::from(IFNAME), INNER_ADDRESS, 24)?;
-    connection.link_set(String::from(IFNAME), true)?;
+    connection.address_add(String::from(ifname), addr, 24)?;
+    connection.link_set(String::from(ifname), true)?;
 
     Ok(())
 }
 
-fn unconfigure_link(connection: &Connection) -> Result<()> {
-    connection.address_flush(String::from(IFNAME))?;
+fn unconfigure_link(connection: &Connection, ifname: &str) -> Result<()> {
+    connection.address_flush(String::from(ifname))?;
 
     DeviceUpdate::new()
         .replace_peers()
@@ -81,7 +106,7 @@ fn unconfigure_link(connection: &Connection) -> Result<()> {
         .unset_fwmark()
         .unset_private_key()
         .unset_public_key()
-        .apply(&IFNAME.parse().expect("valid link name"), Backend::Kernel)?;
+        .apply(&ifname.parse().expect("valid link name"), Backend::Kernel)?;
 
     Ok(())
 }
