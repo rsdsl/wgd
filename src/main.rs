@@ -1,6 +1,6 @@
 use std::fs::{self, File};
 use std::io::{self, BufRead, BufReader};
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{Ipv4Addr, Ipv6Addr};
 use std::thread;
 
 use rsdsl_netlinklib::blocking::Connection;
@@ -9,8 +9,10 @@ use wireguard_control::{AllowedIp, Backend, DeviceUpdate, Key, KeyPair, PeerConf
 
 const IFNAME: &str = "wg0";
 const IFNAME_EXPOSED: &str = "wg1";
-const INNER_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(10, 128, 50, 254));
-const INNER_ADDRESS_EXPOSED: IpAddr = IpAddr::V4(Ipv4Addr::new(10, 128, 60, 254));
+const INNER_ADDR4: Ipv4Addr = Ipv4Addr::new(10, 128, 50, 254);
+const INNER_ADDR4_EXPOSED: Ipv4Addr = Ipv4Addr::new(10, 128, 60, 254);
+const INNER_ADDR6: Ipv6Addr = Ipv6Addr::new(0xfd0b, 0x9272, 0x534e, 6, 0, 0, 0, 1);
+const INNER_ADDR6_EXPOSED: Ipv6Addr = Ipv6Addr::new(0xfd0b, 0x9272, 0x534e, 7, 0, 0, 0, 1);
 const PORT: u16 = 51820;
 const PORT_EXPOSED: u16 = 51821;
 const CONFIGFILE_PRIVATEKEY: &str = "/data/wgd.key";
@@ -58,7 +60,14 @@ fn main() -> Result<()> {
     let keypair = read_or_generate_keypair()?;
     println!("[info] pubkey {}", keypair.public.to_base64());
 
-    configure_link(&connection, keypair.clone(), IFNAME, PORT, INNER_ADDRESS)?;
+    configure_link(
+        &connection,
+        keypair.clone(),
+        IFNAME,
+        PORT,
+        INNER_ADDR4,
+        INNER_ADDR6,
+    )?;
     println!("[info] config {}", IFNAME);
 
     configure_link(
@@ -66,7 +75,8 @@ fn main() -> Result<()> {
         keypair,
         IFNAME_EXPOSED,
         PORT_EXPOSED,
-        INNER_ADDRESS_EXPOSED,
+        INNER_ADDR4_EXPOSED,
+        INNER_ADDR6_EXPOSED,
     )?;
     println!("[info] config {}", IFNAME_EXPOSED);
 
@@ -80,7 +90,8 @@ fn configure_link(
     keypair: KeyPair,
     ifname: &str,
     port: u16,
-    addr: IpAddr,
+    addr4: Ipv4Addr,
+    addr6: Ipv6Addr,
 ) -> Result<()> {
     unconfigure_link(connection, ifname)?;
     println!("[info] unconfig {}", ifname);
@@ -91,7 +102,8 @@ fn configure_link(
         .set_keypair(keypair)
         .apply(&ifname.parse().expect("valid link name"), Backend::Kernel)?;
 
-    connection.address_add(String::from(ifname), addr, 24)?;
+    connection.address_add(String::from(ifname), addr4.into(), 24)?;
+    connection.address_add(String::from(ifname), addr6.into(), 64)?;
     connection.link_set(String::from(ifname), true)?;
 
     Ok(())
