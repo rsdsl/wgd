@@ -47,7 +47,6 @@ fn main() -> Result<()> {
         connection.link_add_wireguard(String::from(IFNAME))?;
         println!("[info] create link {}", IFNAME);
     } else {
-        connection.link_delete(String::from(IFNAME))?;
         println!("[info] link {} exists", IFNAME);
     }
 
@@ -55,7 +54,6 @@ fn main() -> Result<()> {
         connection.link_add_wireguard(String::from(IFNAME_EXPOSED))?;
         println!("[info] create exposed link {}", IFNAME_EXPOSED);
     } else {
-        connection.link_delete(String::from(IFNAME_EXPOSED))?;
         println!("[info] exposed link {} exists", IFNAME_EXPOSED);
     }
 
